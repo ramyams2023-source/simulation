@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Crystal Clock Pulse Generator – HEF4060BP + CD4013BE</title>
+<style>
+:root{--bg:#eef3f6;--card:#fff;--ink:#12263a;--mute:#5c6f80;--line:#c9d6df;--sig:#0f8b8d;--hot:#e08a00;--wire:#12263a;--on:#e08a00;--off:#d5dde3;color-scheme:light}
+@media (prefers-color-scheme:dark){:root:not([data-theme=light]){--bg:#0e1a24;--card:#15232f;--ink:#e3edf3;--mute:#93a6b5;--line:#2b3f50;--sig:#3fd0c9;--hot:#ffb02e;--wire:#cfe0ea;--on:#ffb02e;--off:#2a3b49;color-scheme:dark}}
+:root[data-theme=dark]{--bg:#0e1a24;--card:#15232f;--ink:#e3edf3;--mute:#93a6b5;--line:#2b3f50;--sig:#3fd0c9;--hot:#ffb02e;--wire:#cfe0ea;--on:#ffb02e;--off:#2a3b49;color-scheme:dark}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+.mono{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+header{max-width:1180px;margin:0 auto;padding:26px 20px 8px;display:flex;gap:16px;justify-content:space-between;align-items:flex-start;flex-wrap:wrap}
+h1{margin:0;font-size:1.6rem;letter-spacing:-.01em}
+header p{margin:4px 0 0;color:var(--mute);max-width:60ch}
+main{max-width:1180px;margin:0 auto;padding:12px 20px 40px;display:grid;gap:18px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:16px}
+h2{margin:0 0 10px;font-size:1.05rem}
+.grid2{display:grid;grid-template-columns:minmax(0,3fr) minmax(0,2fr);gap:18px}
+@media(max-width:900px){.grid2{grid-template-columns:1fr}}
+svg.sch{width:100%;height:auto;display:block}
+svg text{fill:var(--ink);font:11px ui-monospace,Menlo,Consolas,monospace}
+svg .w{stroke:var(--wire);stroke-width:1.6;fill:none}
+svg .b{stroke:var(--wire);stroke-width:1.8;fill:var(--card)}
+svg .d{fill:var(--wire)}
+svg .m{fill:var(--mute)}
+.ctl{display:grid;gap:12px}
+label{display:grid;gap:4px;font-weight:600;font-size:.85rem}
+select,button{font:inherit;padding:8px 10px;border-radius:7px;border:1px solid var(--line);background:var(--card);color:var(--ink)}
+button{cursor:pointer;font-weight:600}
+button:focus-visible,select:focus-visible,input:focus-visible{outline:3px solid var(--sig);outline-offset:2px}
+.row{display:flex;gap:8px;flex-wrap:wrap}
+#go{background:var(--sig);color:#04201f;border-color:var(--sig);flex:1;min-width:130px;font-size:1rem;padding:10px 14px}
+.chk{display:flex;gap:8px;align-items:center;font-weight:500}
+.stats{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
+.stat{border:1px solid var(--line);border-radius:8px;padding:8px 10px}
+.stat small{display:block;color:var(--mute)}
+.stat b{font-size:1.05rem}
+.bits{display:grid;grid-template-columns:repeat(auto-fill,minmax(92px,1fr));gap:8px}
+.bit{border:1px solid var(--line);border-radius:8px;padding:6px 8px;display:flex;gap:8px;align-items:center}
+.bit i{width:14px;height:14px;border-radius:50%;background:var(--off);flex:none;border:1px solid var(--line)}
+.bit.on i{background:var(--on);box-shadow:0 0 8px var(--on)}
+.bit.fast i{background:var(--on);opacity:.5}
+.bit span{font-size:.78rem;line-height:1.25}.bit span b{display:block;font-size:.85rem}
+canvas{width:100%;height:300px;display:block;border-radius:8px;background:var(--bg);border:1px solid var(--line)}
+.ledtext{font-weight:700}
+details{margin-top:6px}summary{cursor:pointer;font-weight:600}
+table{border-collapse:collapse;width:100%;font-size:.85rem}td,th{border-bottom:1px solid var(--line);padding:5px 8px;text-align:left}
+.note{color:var(--mute);font-size:.85rem;margin:8px 0 0}
+</style>
+</head>
+<body>
+<header>
+  <div>
+    <h1>Crystal clock pulse generator</h1>
+    <p>HEF4060BP oscillator and 14-stage divider feeding a CD4013BE toggle flip-flop. A 32.768 kHz crystal gives a 1 Hz clock pulse.</p>
+  </div>
+  <button id="theme" type="button" aria-label="Toggle dark or light theme">Theme</button>
+</header>
+
+<main>
+<section class="grid2">
+  <div class="card">
+    <h2>Circuit diagram</h2>
+    <svg class="sch" viewBox="0 0 820 470" role="img" aria-label="Schematic: crystal oscillator on HEF4060BP, pin 3 to CD4013BE clock, 1 Hz output to LED">
+      <!-- rails -->
+      <line class="w" x1="100" y1="30" x2="585" y2="30"/><text x="102" y="22">+VDD (5 to 15 V)</text>
+      <line class="w" x1="40" y1="450" x2="780" y2="450"/><text x="42" y="466">GND</text>
+      <!-- 4060 -->
+      <rect class="b" x="250" y="60" width="150" height="320" rx="3"/>
+      <text x="262" y="78" font-weight="700">HEF4060BP</text>
+      <line class="w" x1="325" y1="30" x2="325" y2="60"/><circle class="d" cx="325" cy="30" r="3"/><text x="293" y="96" class="m">16 VDD</text>
+      <line class="w" x1="325" y1="380" x2="325" y2="450"/><circle class="d" cx="325" cy="450" r="3"/><text x="294" y="372" class="m">8 VSS</text>
+      <text x="256" y="134">11 CP1</text><text x="256" y="174">10 CP0</text><text x="256" y="214">9 CP0&#772;</text><text x="256" y="294">12 MR</text>
+      <g class="m" text-anchor="end">
+        <text x="394" y="94">Q4 · 7</text><text x="394" y="122">Q5 · 5</text><text x="394" y="150">Q6 · 4</text><text x="394" y="178">Q7 · 6</text><text x="394" y="206">Q8 · 14</text>
+        <text x="394" y="234">Q9 · 15</text><text x="394" y="262">Q10 · 13</text><text x="394" y="290">Q12 · 1</text><text x="394" y="318">Q13 · 2</text>
+      </g>
+      <text x="394" y="346" text-anchor="end" font-weight="700">Q14 · 3</text>
+      <!-- oscillator network -->
+      <polyline class="w" points="250,130 60,130"/><circle class="d" cx="120" cy="130" r="3"/><circle class="d" cx="190" cy="130" r="3"/>
+      <polyline class="w" points="250,170 190,170"/><circle class="d" cx="190" cy="170" r="3"/>
+      <polyline class="w" points="250,210 90,210"/><circle class="d" cx="120" cy="210" r="3"/>
+      <line class="w" x1="190" y1="130" x2="190" y2="138"/><rect class="b" x="184" y="138" width="12" height="24"/><line class="w" x1="190" y1="162" x2="190" y2="170"/>
+      <text x="200" y="154" class="m">Rf 10M</text>
+      <line class="w" x1="120" y1="130" x2="120" y2="152"/><line class="w" x1="108" y1="152" x2="132" y2="152"/><rect class="b" x="113" y="157" width="14" height="26"/><line class="w" x1="108" y1="188" x2="132" y2="188"/><line class="w" x1="120" y1="188" x2="120" y2="210"/>
+      <text x="134" y="174" class="m">X1</text><text x="124" y="108" class="m">32.768 kHz</text>
+      <line class="w" x1="60" y1="130" x2="60" y2="372"/><line class="w" x1="48" y1="372" x2="72" y2="372"/><line class="w" x1="48" y1="380" x2="72" y2="380"/><line class="w" x1="60" y1="380" x2="60" y2="450"/><circle class="d" cx="60" cy="450" r="3"/><text x="6" y="400" class="m">C1 22p</text>
+      <line class="w" x1="90" y1="210" x2="90" y2="372"/><line class="w" x1="78" y1="372" x2="102" y2="372"/><line class="w" x1="78" y1="380" x2="102" y2="380"/><line class="w" x1="90" y1="380" x2="90" y2="450"/><circle class="d" cx="90" cy="450" r="3"/><text x="96" y="400" class="m">C2 22p</text>
+      <polyline class="w" points="250,290 150,290 150,450"/><circle class="d" cx="150" cy="450" r="3"/>
+      <!-- 4060 Q14 -> 4013 clk -->
+      <polyline class="w" points="400,342 470,342 470,300 520,300"/>
+      <text x="408" y="336" class="m">2 Hz</text>
+      <!-- 4013 -->
+      <rect class="b" x="520" y="270" width="130" height="140" rx="3"/>
+      <text x="528" y="287" font-weight="700">CD4013BE</text>
+      <text x="526" y="304">3 CLK1</text><text x="526" y="334">5 D1</text><text x="526" y="364">6 SET1</text><text x="526" y="394">4 RST1</text>
+      <text x="644" y="304" text-anchor="end">Q1 · 1</text><text x="644" y="334" text-anchor="end">Q&#772;1 · 2</text>
+      <line class="w" x1="585" y1="30" x2="585" y2="270"/><circle class="d" cx="585" cy="30" r="3"/><text x="590" y="262" class="m">14 VDD</text>
+      <line class="w" x1="585" y1="410" x2="585" y2="450"/><circle class="d" cx="585" cy="450" r="3"/><text x="590" y="425" class="m">7 VSS</text>
+      <!-- toggle feedback Qbar -> D -->
+      <polyline class="w" points="650,330 675,330 675,248 490,248 490,330 520,330"/>
+      <polyline class="w" points="520,360 505,360 505,450"/><polyline class="w" points="520,390 505,390"/><circle class="d" cx="505" cy="450" r="3"/><circle class="d" cx="505" cy="390" r="3"/>
+      <!-- output + LED -->
+      <polyline class="w" points="650,300 765,300 765,318"/><text x="700" y="292" font-weight="700" fill="var(--sig)">1 Hz out</text>
+      <rect class="b" x="759" y="318" width="12" height="26"/><text x="776" y="335" class="m">R2 330</text>
+      <line class="w" x1="765" y1="344" x2="765" y2="362"/>
+      <polygon id="ledbody" points="755,362 775,362 765,382" class="b" style="fill:var(--off)"/><line class="w" x1="755" y1="384" x2="775" y2="384"/>
+      <line class="w" x1="765" y1="384" x2="765" y2="450"/><circle class="d" cx="765" cy="450" r="3"/><text x="710" y="378" class="m">LED1</text>
+      <text x="530" y="440" class="m" font-size="10">FF2 unused: CLK2 → Q1 gives 0.5 Hz</text>
+    </svg>
+    <p class="note">Crystal X1 sits between CP1 (pin 11) and CP0&#772; (pin 9); Rf biases the inverter. Q14 (pin 3) divides the crystal by 16384. The flip-flop has D tied to Q&#772;, so it toggles on every clock edge and divides by 2 again. Unused CD4013 inputs (SET, RESET) go to ground.</p>
+  </div>
+
+  <div class="card ctl">
+    <h2>Simulation controls</h2>
+    <div class="row">
+      <button id="go" type="button">Simulate</button>
+      <button id="reset" type="button">Reset</button>
+    </div>
+    <label>Crystal frequency
+      <select id="xtal">
+        <option value="32768" selected>32.768 kHz (watch crystal → 1 Hz)</option>
+        <option value="100000">100 kHz</option>
+        <option value="1000000">1 MHz</option>
+        <option value="3276800">3.2768 MHz</option>
+        <option value="4194304">4.194304 MHz</option>
+      </select>
+    </label>
+    <label>Simulation speed
+      <select id="speed"><option value="0.1">0.1× (slow motion)</option><option value="1" selected>1× (real time)</option><option value="4">4×</option><option value="20">20×</option></select>
+    </label>
+    <label>Scope time window
+      <select id="span">
+        <option value="0.0001">100 µs (see crystal cycles)</option><option value="0.001">1 ms</option><option value="0.1">100 ms</option><option value="1">1 s</option><option value="4" selected>4 s</option><option value="10">10 s</option>
+      </select>
+    </label>
+    <label class="chk"><input type="checkbox" id="mr"> Hold MR (pin 12) high: counter reset</label>
+    <div class="stats">
+      <div class="stat"><small>Elapsed time</small><b class="mono" id="sT">0.000 s</b></div>
+      <div class="stat"><small>Crystal pulses</small><b class="mono" id="sC">0</b></div>
+      <div class="stat"><small>Q14 output (pin 3)</small><b class="mono" id="sQ">–</b></div>
+      <div class="stat"><small>Clock pulse output</small><b class="mono" id="sO">–</b></div>
+      <div class="stat" style="grid-column:span 2"><small>Output LED</small><b class="ledtext" id="sL">Idle</b></div>
+    </div>
+  </div>
+</section>
+
+<section class="card">
+  <h2>Counter outputs (HEF4060BP)</h2>
+  <div class="bits" id="bits"></div>
+  <p class="note">A lit dot means the output is high. Outputs faster than about 20 Hz show as a dim dot because the eye cannot follow them.</p>
+</section>
+
+<section class="card">
+  <h2>Logic scope</h2>
+  <canvas id="scope" aria-label="Waveforms of oscillator, counter and flip-flop outputs"></canvas>
+  <p class="note">Rows from top: crystal clock, Q4, Q8, Q14, flip-flop Q (clock pulse), flip-flop 2 Q. A shaded band means the signal is too fast to draw at this time window.</p>
+</section>
+
+<section class="card">
+  <h2>Parts and working</h2>
+  <table>
+    <tr><th>Part</th><th>Value</th><th>Role</th></tr>
+    <tr><td>IC1</td><td>HEF4060BP</td><td>Oscillator inverters plus 14-stage binary ripple counter</td></tr>
+    <tr><td>IC2</td><td>CD4013BE</td><td>Dual D flip-flop, FF1 wired as a ÷2 toggle</td></tr>
+    <tr><td>X1</td><td>32.768 kHz</td><td>Quartz crystal</td></tr>
+    <tr><td>Rf</td><td>10 MΩ</td><td>Feedback bias for the oscillator</td></tr>
+    <tr><td>C1, C2</td><td>22 pF</td><td>Load capacitors, trim to tune</td></tr>
+    <tr><td>R2, LED1</td><td>330 Ω, LED</td><td>Pulse indicator</td></tr>
+    <tr><td>Supply</td><td>5 to 15 V DC</td><td>Add a 100 nF decoupling capacitor across each IC</td></tr>
+  </table>
+  <p class="note">32768 Hz ÷ 2<sup>14</sup> = 2 Hz at Q14, then ÷ 2 in the flip-flop = 1 Hz. Any other crystal gives f ÷ 32768 at the output, so only 32.768 kHz gives exactly 1 Hz.</p>
+</section>
+</main>
+
+<script>
+(function(){
+"use strict";
+const $=id=>document.getElementById(id);
+const OUTS=[["Q4",7,4],["Q5",5,5],["Q6",4,6],["Q7",6,7],["Q8",14,8],["Q9",15,9],["Q10",13,10],["Q12",1,12],["Q13",2,13],["Q14",3,14]];
+let t=0,running=false,last=performance.now(),f=32768;
+
+// theme toggle
+$("theme").onclick=()=>{const r=document.documentElement,dark=getComputedStyle(r).getPropertyValue("--bg").trim()==="#0e1a24";r.setAttribute("data-theme",dark?"light":"dark")};
+
+// build counter indicators
+const bitsEl=$("bits");
+OUTS.forEach(o=>{const d=document.createElement("div");d.className="bit";d.innerHTML='<i></i><span><b>'+o[0]+'</b>pin '+o[1]+'<br><em class="mono"></em></span>';bitsEl.appendChild(d);o.push(d)});
+
+function fmt(x){
+  if(x>=1e6)return +(x/1e6).toPrecision(7)+" MHz";
+  if(x>=1e3)return +(x/1e3).toPrecision(7)+" kHz";
+  if(x>=1)return +x.toPrecision(7)+" Hz";
+  return +x.toPrecision(5)+" Hz";
+}
+// level of the stage n (n=0 crystal, n=k divide by 2^k) at time x
+const lvl=(n,x)=>Math.floor(x*f/Math.pow(2,n-1))%2;
+
+function refreshLabels(){
+  OUTS.forEach(o=>{o[3].querySelector("em").textContent=fmt(f/Math.pow(2,o[2]))});
+  $("sQ").textContent=fmt(f/16384);
+  $("sO").textContent=fmt(f/32768);
+}
+
+const cv=$("scope"),cx=cv.getContext("2d");
+const TR=[["XTAL",0],["Q4",4],["Q8",8],["Q14",14],["FF1 Q",15],["FF2 Q",16]];
+function css(n){return getComputedStyle(document.documentElement).getPropertyValue(n).trim()}
+
+function drawScope(){
+  const dpr=window.devicePixelRatio||1,W=cv.clientWidth,H=cv.clientHeight;
+  if(cv.width!==W*dpr||cv.height!==H*dpr){cv.width=W*dpr;cv.height=H*dpr}
+  cx.setTransform(dpr,0,0,dpr,0,0);cx.clearRect(0,0,W,H);
+  const span=+$("span").value,start=Math.max(0,t-span),LM=70,PW=W-LM-8,rowH=H/TR.length;
+  const sig=css("--sig"),line=css("--line"),ink=css("--ink"),mute=css("--mute"),hot=css("--hot");
+  cx.font="11px ui-monospace,Menlo,monospace";cx.textBaseline="middle";
+  // time grid
+  cx.strokeStyle=line;cx.lineWidth=1;
+  for(let i=0;i<=10;i++){const x=LM+PW*i/10;cx.beginPath();cx.moveTo(x,0);cx.lineTo(x,H);cx.stroke()}
+  TR.forEach((tr,i)=>{
+    const y0=i*rowH,hi=y0+rowH*.2,lo=y0+rowH*.8,n=tr[1];
+    cx.fillStyle=ink;cx.textAlign="left";cx.fillText(tr[0],8,y0+rowH/2);
+    const h=Math.pow(2,n-1)/f,pxHalf=h/span*PW;
+    cx.strokeStyle=n===15?hot:sig;cx.fillStyle=n===15?hot:sig;cx.lineWidth=1.6;
+    if(pxHalf<2.5){cx.globalAlpha=.28;cx.fillRect(LM,hi,PW,lo-hi);cx.globalAlpha=1;cx.fillStyle=mute;cx.fillText("fast",LM+6,y0+rowH/2);return}
+    let k=Math.floor(start/h),L=k%2,x=LM;
+    cx.beginPath();cx.moveTo(x,L?hi:lo);
+    for(k=k+1;k*h<start+span;k++){
+      x=LM+(k*h-start)/span*PW;cx.lineTo(x,L?hi:lo);L^=1;cx.lineTo(x,L?hi:lo);
+    }
+    cx.lineTo(LM+PW,L?hi:lo);cx.stroke();
+  });
+  cx.fillStyle=mute;cx.textAlign="right";
+  cx.fillText((start+span).toPrecision(4)+" s",W-4,H-8);cx.textAlign="left";cx.fillText(start.toPrecision(4)+" s",LM+2,H-8);
+}
+
+function update(){
+  const c=Math.floor(t*f);
+  $("sT").textContent=t.toFixed(3)+" s";
+  $("sC").textContent=c.toLocaleString("en-US");
+  OUTS.forEach(o=>{
+    const fr=f/Math.pow(2,o[2]),b=lvl(o[2],t),el=o[3];
+    el.classList.toggle("fast",fr>20);el.classList.toggle("on",fr<=20&&b===1);
+  });
+  const out=lvl(15,t)===1&&(running||t>0);
+  $("ledbody").style.fill=out?css("--on"):css("--off");
+  $("ledbody").style.filter=out?"drop-shadow(0 0 6px "+css("--on")+")":"none";
+  const of=f/32768;
+  $("sL").textContent=!running&&t===0?"Idle":(of>20?"Blinking too fast to see ("+fmt(of)+")":(out?"ON":"OFF"));
+  drawScope();
+}
+
+function frame(now){
+  const dt=Math.min(.1,(now-last)/1000);last=now;
+  if($("mr").checked)t=0;
+  else if(running)t+=dt*(+$("speed").value);
+  update();requestAnimationFrame(frame);
+}
+
+$("go").onclick=()=>{running=!running;if(running&&$("mr").checked)$("mr").checked=false;$("go").textContent=running?"Pause":"Simulate"};
+$("reset").onclick=()=>{t=0;running=false;$("go").textContent="Simulate";update()};
+$("xtal").onchange=()=>{f=+$("xtal").value;t=0;refreshLabels();update()};
+$("span").onchange=update;
+$("mr").onchange=()=>{if($("mr").checked){t=0;running=false;$("go").textContent="Simulate"}};
+window.addEventListener("resize",update);
+
+refreshLabels();update();requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>
